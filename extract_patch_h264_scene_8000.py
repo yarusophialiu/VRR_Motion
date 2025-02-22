@@ -48,18 +48,20 @@ def compute_velocity(patch, motion_vector_path):
 
     h, w = patch.shape[1], patch.shape[2]  # height and width
     odd_channel_processed = patch[1, :, :].float()  # Convert to float for calculations
-    even_channel_processed = patch[2, :, :].float()
-    # print(odd_channel_processed)
+    blue_channel_processed = patch[2, :, :].float()
+    even_channel_processed = patch[0, :, :].float()
+    # print(f'odd_channel_processed {odd_channel_processed}')
+    # print(f'even_channel_processed {even_channel_processed}')
+    # print(f'blue_channel_processed {blue_channel_processed}')
 
     even_channel = (((even_channel_processed / 255.0) * 2) - 1) * pixel_precision
     even_channel = even_channel / (0.5 * w)  # Undo the scaling based on width
     odd_channel = (((odd_channel_processed / 255.0) * 2) - 1) * pixel_precision
     odd_channel = odd_channel / (0.5 * h)  # Undo the scaling based on height
     squared_sum = odd_channel ** 2 + even_channel ** 2
-
     sqrt_result = torch.sqrt(squared_sum)
-    # print("Square root of odd^2 + even^2:\n", sqrt_result)
-    average = round(sqrt_result.mean().item(), 3)
+    # print(f'sqrt_result.mean() {sqrt_result.mean()}')
+    average = round(sqrt_result.mean().item(), 5)
     return average
 
 
@@ -170,6 +172,7 @@ def compute_per_bitrate(fps, resolution, path_name, total):
 
 # each id is 1 path_seg_speed, loop through all scenes given 1 id
 # extract from 8000kbps bitrate only
+# extract patch and patch velocity
 if __name__ == "__main__":
     # parser = argparse.ArgumentParser(description='Process some integers.')
     # parser.add_argument('SLURM_ARRAY_TASK_ID', type=int, help='The id of task')
@@ -179,15 +182,17 @@ if __name__ == "__main__":
     # scene = args.scene
     # id = 1
 
-    scenes = [
-            # 'bedroom', 'bistro', 
-            #  'crytek_sponza', 
-            #  'gallery', 
-            #  'living_room', 
-            #  'lost_empire', 
-             'room', 
-            #  'suntemple', 
-             ]
+    # scenes = [
+    #         # 'bedroom', 'bistro', 
+    #         #  'crytek_sponza', 
+    #         #  'gallery', 
+    #         #  'living_room', 
+    #         #  'lost_empire', 
+    #         'room', 
+    #         #  'suntemple', 
+    #          ]
+    scenes = ['bedroom', 'bistro', 'crytek_sponza', 'gallery', 'living_room', 'lost_empire', 'room', 'sibenik', 'suntemple', 'suntemple_statue']
+    
     fps = 166
     resolution = 1080
     SAVE = True # True, False
@@ -208,6 +213,7 @@ if __name__ == "__main__":
             path_name = f'{scene}_path{path}_seg{seg}_{speed}'
 
             total = 0
+            # save max vector[0], vecotor[1] across frame
             motion_vector_path = f'{VRR_Motion}/reference/motion_vector_reference/{scene}/{scene}_path{path}_seg{seg}_{speed}_velocity_cleaned.txt'
             motion_video_path = f'{VRR_Motion}/reference/refMP4_reference/{scene}/{scene}_path{path}_seg{seg}_{speed}_refOutput_166_1080_8000.mp4'
             compute_per_bitrate(fps, resolution, path_name, total)
