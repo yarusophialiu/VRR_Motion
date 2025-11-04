@@ -2,6 +2,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
+
+def normalize(sample, min_vals, max_vals):
+    # print(f'val, min_vals, max_vals {sample, min_vals, max_vals}')
+    sample = (sample - min_vals) / (max_vals - min_vals)
+    sample = np.clip(sample, 0, 1)
+    return sample
+
+
 def plot_motion_velocity(file_path, output_root="motion_velocity_plots"):
     """
     Plot motion velocity vs frame index from a text file.
@@ -13,10 +21,16 @@ def plot_motion_velocity(file_path, output_root="motion_velocity_plots"):
     data = np.loadtxt(file_path)
     frame_indices = data[1:, 0]
     velocity_raw  = data[1:, 1]
-
+    # print(f'velocity_raw {velocity_raw}')
     frame_rate = 166
     screen_diag_px = np.sqrt(1080**2 + 1920**2)   # pixel diagonal for FHD
     pixels_per_degree = 37.8  # from cvvdp, monitor's pixel density per visual degree
+    MAX_VELOCITY = 0.4 # 1.79153 0.31414 0.361342
+    MIN_VELOCITY = 0.0 # 7e-05
+    velocity_raw = normalize(velocity_raw, MIN_VELOCITY, MAX_VELOCITY)
+    # print(f'velocity_raw {velocity_raw}')
+
+    # MAX MIN normalization
 
     # === Transformations ===
     # m1: convert to pixels per frame
@@ -25,6 +39,7 @@ def plot_motion_velocity(file_path, output_root="motion_velocity_plots"):
     m2 = m1 / pixels_per_degree
     # m3: convert to degrees per second
     m3 = m2 * frame_rate
+    m3 = velocity_raw
 
     # Determine subfolder (e.g., 'bedroom')
     input_root = os.path.normpath("magnitude_motion_per_frame")
@@ -34,31 +49,33 @@ def plot_motion_velocity(file_path, output_root="motion_velocity_plots"):
     output_dir = os.path.join(output_root, subfolder)
     os.makedirs(output_dir, exist_ok=True)
 
-    # save_name = os.path.splitext(os.path.basename(file_path))[0] + "_plot.png"
-    # save_path = os.path.join(output_dir, save_name)
-    base_name = os.path.splitext(os.path.basename(file_path))[0]
-    save_plot_path = os.path.join(output_dir, f"{base_name}_plot.png")
-    save_txt_path = os.path.join(output_dir, f"{base_name}_deg_per_sec.txt")
+    if SHOW:
+        base_name = os.path.splitext(os.path.basename(file_path))[0]
+        save_plot_path = os.path.join(output_dir, f"{base_name}_plot.png")
+        save_txt_path = os.path.join(output_dir, f"{base_name}_deg_per_sec.txt")
 
-    plt.figure(figsize=(8, 5))
-    plt.plot(frame_indices, m3, marker='o', linestyle='-', linewidth=1, markersize=3)
-    plt.xlabel("Frame Index")
-    plt.ylabel("Motion Velocity")
-    plt.title(f"Motion Velocity per Frame\n({os.path.basename(file_path)})")
-    plt.grid(True)
 
-    plt.savefig(save_plot_path, dpi=300, bbox_inches='tight')
-    plt.close()
+        plt.figure(figsize=(8, 5))
+        plt.plot(frame_indices, m3, marker='o', linestyle='-', linewidth=1, markersize=3)
+        plt.xlabel("Frame Index")
+        plt.ylabel("Motion Velocity")
+        plt.title(f"Frame velocity using for training\n({os.path.basename(file_path)})")
+        plt.grid(True)
 
-    print(f"✅ Plot saved to: {save_plot_path}")
+        plt.savefig(save_plot_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        plt.show()
 
-    if SAVE_TRANSFORMED_VELOCITIES:
-        # === Save transformed velocity data ===
-        transformed_data = np.column_stack((frame_indices, m3))
-        np.savetxt(save_txt_path, transformed_data, fmt="%.0f %.6f", header="FrameIndex Velocity_deg_per_sec")
-        print(f"✅ Transformed velocity saved to: {save_txt_path}")
+        print(f"✅ Plot saved to: {save_plot_path}")
+
+        if SAVE_TRANSFORMED_VELOCITIES:
+            # === Save transformed velocity data ===
+            transformed_data = np.column_stack((frame_indices, m3))
+            np.savetxt(save_txt_path, transformed_data, fmt="%.0f %.6f", header="FrameIndex Velocity_deg_per_sec")
+            print(f"✅ Transformed velocity saved to: {save_txt_path}")
 
 if __name__ == "__main__":
     SAVE_TRANSFORMED_VELOCITIES = True
-    file_path = r"magnitude_motion_per_frame\bedroom\bedroom_path1_seg1_1_velocity_per_frame.txt"
+    file_path = r"magnitude_motion_per_frame\room\room_path4_seg2_3_velocity_per_frame.txt"
+    SHOW = True
     plot_motion_velocity(file_path)
